@@ -1,7 +1,6 @@
 ## Message Search
 
-This mod adds a text search filter to the message log and also enables fast scrolling via page up &
-page down.
+This mod adds a text search filter to the message log.
 
 This was inspired by the
 [ShopSearch](https://codeberg.org/danvolchek/rift-wizard-2-mods/src/branch/main/ShopSearch) mod and
@@ -26,15 +25,12 @@ In the message log (default key `m`):
 - Press `/` or `CONFIRM` (usually `Return`) to finish typing in filter text
 - To clear the search text, press `/` and then `Esc`, or close and re-open the menu
 
-Additional message log controls:
-- Press `PageUp` or `PageDown` to scroll the message log by a page
-
 ### Compatibility
 
 This is compatible with all other mods, unless they also modify the message log key bindings.
 
 ### Changelog
 
-#### v0.1
+#### v1.0.0
 
-Setting up the repo to create a release.
+Initial release with basic filtering and new scrolling.
