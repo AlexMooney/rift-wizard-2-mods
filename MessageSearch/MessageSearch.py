@@ -1,13 +1,17 @@
-# This allows importing from RW2 source code files, such as Level
+import os
 import sys
+
+import pygame
+
+# This allows importing from RW2 source code files, such as Level
 sys.path.append("../..")
 
 # This retrieves the main module
 import inspect
+
 frm = inspect.stack()[-1]
 RiftWizard2 = inspect.getmodule(frm[0])
 
-import os
 
 # --------------------------------------------------------------------------------
 # Lib code written by @danvolchek
@@ -105,6 +109,7 @@ def notify_once(obj, attribute, notify):
     # Move wrap and unwrap to notifier?
     setattr(obj, attribute, Notifier(orig, notify_hook))
 
+
 # End of lib code
 # --------------------------------------------------------------------------------
 # Code for the MessageSearch mod
@@ -112,6 +117,7 @@ class MessageSearchData:
     def __init__(self):
         # Text currently entered in the message filter
         self.filter_text = ""
+        self.other_filters = {"wizard": False, "ally": False, "enemy": False}
 
         # Whether text is being entered in the message filter or not
         self.editing_filter_text = False
@@ -132,7 +138,6 @@ def process_combat_log_input_hook(process_combat_log_input, self):
 
         if mod_data.editing_filter_text:
             if evt.key in self.key_binds[RiftWizard2.KEY_BIND_ABORT]:
-                self.play_sound("menu_confirm")
                 mod_data.editing_filter_text = False
                 mod_data.filter_text = ""
                 filter_changed = True
@@ -147,7 +152,6 @@ def process_combat_log_input_hook(process_combat_log_input, self):
                 if len(mod_data.filter_text) > 0:
                     mod_data.filter_text = mod_data.filter_text[:-1]
                     filter_changed = True
-                    self.play_sound("menu_confirm")
                 else:
                     self.play_sound("hit_4")
                 events_to_remove.append(evt)
@@ -159,9 +163,31 @@ def process_combat_log_input_hook(process_combat_log_input, self):
                 mod_data.filter_text += chr(evt.key)
                 filter_changed = True
                 events_to_remove.append(evt)
-                self.play_sound("menu_confirm")
+        else:
+            if evt.key == pygame.K_r:
+                mod_data.filter_text = ""
+                mod_data.other_filters = {
+                    "wizard": False,
+                    "ally": False,
+                    "enemy": False,
+                }
+                filter_changed = True
+                events_to_remove.append(evt)
+            if evt.key == pygame.K_w:
+                mod_data.other_filters["wizard"] = not mod_data.other_filters["wizard"]
+                filter_changed = True
+                events_to_remove.append(evt)
+            if evt.key == pygame.K_a:
+                mod_data.other_filters["ally"] = not mod_data.other_filters["ally"]
+                filter_changed = True
+                events_to_remove.append(evt)
+            if evt.key == pygame.K_e:
+                mod_data.other_filters["enemy"] = not mod_data.other_filters["enemy"]
+                filter_changed = True
+                events_to_remove.append(evt)
 
         if filter_changed:
+            self.play_sound("menu_confirm")
             self.set_combat_log_display(self.combat_log_level, self.combat_log_turn)
 
     self.events = [event for event in self.events if event not in events_to_remove]
@@ -187,15 +213,28 @@ def set_combat_log_display_hook(_set_combat_log_display, self, level, turn):
     )
     if os.path.exists(log_fn):
         with open(log_fn, "r") as logfile:
-            self.combat_log_lines = [s.strip() for s in logfile.readlines()]
+            self.combat_log_lines = [line.strip() for line in logfile.readlines()]
 
+    first_line = self.combat_log_lines[0]
     if mod_data.filter_text:
-        first_line = self.combat_log_lines[0]
         self.combat_log_lines = [
-            s
-            for s in self.combat_log_lines
-            if mod_data.filter_text in s.lower() or s == first_line
+            line
+            for line in self.combat_log_lines
+            if mod_data.filter_text in line.lower() or line == first_line
         ]
+    for filter_name, value in mod_data.other_filters.items():
+        if value and filter_name in ["ally", "enemy"]:
+            self.combat_log_lines = [
+                line
+                for line in self.combat_log_lines
+                if ":%s" % filter_name in line or line == first_line
+            ]
+        elif value and filter_name == "wizard":
+            self.combat_log_lines = [
+                line
+                for line in self.combat_log_lines
+                if "Wizard" in line or line == first_line
+            ]
 
 
 # Show the message filter in the combat log
@@ -209,7 +248,7 @@ def draw_combat_log_hook(draw_combat_log, self):
     def screen_used():
         cloud_frame_clock = RiftWizard2.cloud_frame_clock
 
-        cur_x = 18 * 40
+        cur_x = 18 * 20
         cur_y = self.border_margin
 
         current_frame = cloud_frame_clock // RiftWizard2.STATUS_SUBFRAMES % 6
@@ -237,6 +276,37 @@ def draw_combat_log_hook(draw_combat_log, self):
             color,
         )
 
+        cur_x = 18 * 40
+        cur_y = self.border_margin
+        self.draw_string("Filters", self.middle_menu_display, cur_x, cur_y)
+
+        cur_x += self.font.size("Filters")[0] + 36
+        self.draw_string("Reset All", self.middle_menu_display, cur_x, cur_y)
+        color = color_frames[current_frame % 3]
+        self.draw_string("R", self.middle_menu_display, cur_x, cur_y, color)
+
+        cur_x = 18 * 40
+        cur_y += self.linesize
+        for filter_name in ["Wizard", "Ally", "Enemy"]:
+            self.draw_string(filter_name, self.middle_menu_display, cur_x, cur_y)
+            if mod_data.other_filters[filter_name.lower()]:
+                self.draw_string(
+                    filter_name[1:],
+                    self.middle_menu_display,
+                    cur_x + self.font.size(filter_name[0])[0],
+                    cur_y,
+                    RiftWizard2.tooltip_colors[filter_name.lower()].to_tup(),
+                )
+            else:
+                self.draw_string(
+                    filter_name[0],
+                    self.middle_menu_display,
+                    cur_x,
+                    cur_y,
+                    RiftWizard2.tooltip_colors[filter_name.lower()].to_tup(),
+                )
+            cur_x += self.font.size(filter_name)[0] + 18
+
     notify_once(self, "screen", screen_used)
     draw_combat_log(self)
 
@@ -247,6 +317,7 @@ def run_hook(run, self):
         self._MessageSearchModData = MessageSearchData()
 
     run(self)
+
 
 # Load the mod
 VERSION = "?"
