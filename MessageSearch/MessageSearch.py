@@ -268,16 +268,19 @@ def draw_combat_log_hook(draw_combat_log, self):
     def screen_used():
         cloud_frame_clock = RiftWizard2.cloud_frame_clock
 
-        cur_x = 18 * 20
+        cur_x = 18 * 10
         cur_y = self.border_margin
 
-        current_frame = cloud_frame_clock // RiftWizard2.STATUS_SUBFRAMES % 6
-        color_frames = [(255, 213, 79), (255, 238, 88), (246, 254, 141)]
+        current_frame = cloud_frame_clock // RiftWizard2.STATUS_SUBFRAMES % 4
+        light = RiftWizard2.tooltip_colors["lightning"].to_tup()
+        word = RiftWizard2.tooltip_colors["word"].to_tup()
+        holy = RiftWizard2.tooltip_colors["holy"].to_tup()
+        color_frames = [word, light, holy, light]
 
         self.draw_string("Filter by Text", self.middle_menu_display, cur_x, cur_y)
         cur_y += self.linesize
 
-        color = color_frames[current_frame % 3]
+        color = color_frames[current_frame]
         self.draw_string("/", self.middle_menu_display, cur_x, cur_y, color)
 
         if not mod_data.filter_text and not mod_data.editing_filter_text:
@@ -296,24 +299,25 @@ def draw_combat_log_hook(draw_combat_log, self):
             color,
         )
 
-        cur_x = 18 * 40
+        cur_x = 18 * 35
         cur_y = self.border_margin
         self.draw_string("Filters", self.middle_menu_display, cur_x, cur_y)
 
-        cur_x += self.font.size("Filters")[0] + 36
-        self.draw_string("Reset All", self.middle_menu_display, cur_x, cur_y)
+        # Align Reset with "Enemy" on the next line
+        cur_x += self.font.size("WizardAlly")[0] + 18 * 2
+        self.draw_string("Reset", self.middle_menu_display, cur_x, cur_y)
         color = color_frames[current_frame % 3]
         self.draw_string("R", self.middle_menu_display, cur_x, cur_y, color)
 
-        cur_x = 18 * 40
+        cur_x = 18 * 35
         cur_y += self.linesize
         for filter_name in ["Wizard", "Ally", "Enemy"]:
             self.draw_string(filter_name, self.middle_menu_display, cur_x, cur_y)
             if mod_data.other_filters[filter_name.lower()]:
                 self.draw_string(
-                    filter_name[1:],
+                    filter_name,
                     self.middle_menu_display,
-                    cur_x + self.font.size(filter_name[0])[0],
+                    cur_x,
                     cur_y,
                     RiftWizard2.tooltip_colors[filter_name.lower()].to_tup(),
                 )
