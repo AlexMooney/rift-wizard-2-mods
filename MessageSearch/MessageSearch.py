@@ -1,4 +1,5 @@
 import os
+import re
 import sys
 
 import pygame
@@ -122,6 +123,25 @@ class MessageSearchData:
         # Whether text is being entered in the message filter or not
         self.editing_filter_text = False
 
+        # From `draw_wrapped_string` in `RiftWizard2`
+        self.word_split_regex = re.compile('[\[\]:|\w\|\'|%|-]+|.| |,')
+
+    def match_filter(self, text):
+        if not self.filter_text:
+            return True
+
+        # Convert [Wizard:wizard], [1_Fire:Fire], and so forth to match string filter
+        words = re.findall(self.word_split_regex, text)
+        clean_text = ""
+        for word in words:
+            if word and word[0] == '[' and word[-1] == ']':
+                clean_text += word[1:-1].split(':')[0].replace('_', ' ')
+            else:
+                clean_text += word
+
+        if self.filter_text in clean_text.lower():
+            return True
+        return False
 
 @hook(RiftWizard2.PyGameView)
 def process_combat_log_input_hook(process_combat_log_input, self):
@@ -136,7 +156,7 @@ def process_combat_log_input_hook(process_combat_log_input, self):
             mod_data.editing_filter_text = not mod_data.editing_filter_text
             events_to_remove.append(evt)
 
-        if mod_data.editing_filter_text:
+        elif mod_data.editing_filter_text:
             if evt.key in self.key_binds[RiftWizard2.KEY_BIND_ABORT]:
                 mod_data.editing_filter_text = False
                 mod_data.filter_text = ""
@@ -156,8 +176,8 @@ def process_combat_log_input_hook(process_combat_log_input, self):
                     self.play_sound("hit_4")
                 events_to_remove.append(evt)
 
-            if (
-                RiftWizard2.pygame.K_a <= evt.key <= RiftWizard2.pygame.K_z
+            if (RiftWizard2.pygame.K_a <= evt.key <= RiftWizard2.pygame.K_z
+                or RiftWizard2.pygame.K_0 <= evt.key <= RiftWizard2.pygame.K_9
                 or evt.key == RiftWizard2.pygame.K_SPACE
             ):
                 mod_data.filter_text += chr(evt.key)
@@ -220,7 +240,7 @@ def set_combat_log_display_hook(_set_combat_log_display, self, level, turn):
         self.combat_log_lines = [
             line
             for line in self.combat_log_lines
-            if mod_data.filter_text in line.lower() or line == first_line
+            if mod_data.match_filter(line) or line == first_line
         ]
     for filter_name, value in mod_data.other_filters.items():
         if value and filter_name in ["ally", "enemy"]:
